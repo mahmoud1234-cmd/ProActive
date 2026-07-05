@@ -1,7 +1,6 @@
 package com.proactive.demo.service;
 
 import com.proactive.demo.model.User;
-import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,52 +20,105 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    /**
-     * Envoie un email de confirmation d'approbation à l'utilisateur.
-     * Exécuté en asynchrone pour ne pas bloquer la requête HTTP.
-     */
     @Async
     public void sendApprovalEmail(User approvedUser, User admin) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail, "ProActive — Administration");
+            helper.setFrom(fromEmail, "ProActive");
             helper.setTo(approvedUser.getEmail());
-            helper.setSubject("✅ Votre compte ProActive a été activé");
-            helper.setText(buildApprovalHtml(approvedUser, admin), true);
+            // Sujet sans emoji (réduit le score spam)
+            helper.setSubject("Votre compte ProActive a été activé");
+
+            // Fournir les deux versions : texte brut ET HTML
+            String text = buildApprovalText(approvedUser, admin);
+            String html = buildApprovalHtml(approvedUser, admin);
+            helper.setText(text, html);
+
+            // Headers anti-spam
+            message.setHeader("X-Mailer", "ProActive Mailer");
+            message.setHeader("X-Priority", "3");
 
             mailSender.send(message);
-            log.info("Email d'approbation envoyé à {}", approvedUser.getEmail());
-
+            log.info("Email approbation envoyé à {}", approvedUser.getEmail());
         } catch (Exception e) {
-            log.error("Échec envoi email à {} : {}", approvedUser.getEmail(), e.getMessage());
+            log.error("Echec email approbation {} : {}", approvedUser.getEmail(), e.getMessage());
         }
     }
 
-    /**
-     * Envoie un email de refus à l'utilisateur.
-     */
     @Async
     public void sendRejectionEmail(User rejectedUser, User admin) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(fromEmail, "ProActive — Administration");
+            helper.setFrom(fromEmail, "ProActive");
             helper.setTo(rejectedUser.getEmail());
-            helper.setSubject("❌ Votre demande d'inscription ProActive");
-            helper.setText(buildRejectionHtml(rejectedUser, admin), true);
+            helper.setSubject("Votre demande d'inscription ProActive");
+
+            String text = buildRejectionText(rejectedUser, admin);
+            String html = buildRejectionHtml(rejectedUser, admin);
+            helper.setText(text, html);
+
+            message.setHeader("X-Mailer", "ProActive Mailer");
+            message.setHeader("X-Priority", "3");
 
             mailSender.send(message);
-            log.info("Email de refus envoyé à {}", rejectedUser.getEmail());
-
+            log.info("Email refus envoyé à {}", rejectedUser.getEmail());
         } catch (Exception e) {
-            log.error("Échec envoi email à {} : {}", rejectedUser.getEmail(), e.getMessage());
+            log.error("Echec email refus {} : {}", rejectedUser.getEmail(), e.getMessage());
         }
     }
 
-    // ── Templates HTML ────────────────────────────────────────────────────
+    // ── Version texte brut (anti-spam essentiel) ────────────────────────
+
+    private String buildApprovalText(User user, User admin) {
+        return """
+            Bonjour %s,
+            
+            Votre compte ProActive a été approuvé et activé par %s (Administrateur).
+            
+            Informations de votre compte :
+            - Email : %s
+            - Role  : %s
+            - Statut: Actif
+            
+            Vous pouvez maintenant vous connecter sur la plateforme ProActive.
+            
+            Cordialement,
+            L'équipe ProActive
+            
+            ---
+            Ce message a été envoyé automatiquement par ProActive.
+            """.formatted(
+                user.getFirstName() + " " + user.getLastName(),
+                admin.getFirstName() + " " + admin.getLastName(),
+                user.getEmail(),
+                getRoleLabel(user.getRole())
+            );
+    }
+
+    private String buildRejectionText(User user, User admin) {
+        return """
+            Bonjour %s,
+            
+            Nous vous informons que votre demande de création de compte ProActive
+            n'a pas pu être approuvée pour le moment.
+            
+            Pour plus d'informations, veuillez contacter votre administrateur.
+            
+            Décision prise par : %s (Administrateur ProActive)
+            
+            Cordialement,
+            L'équipe ProActive
+            """.formatted(
+                user.getFirstName() + " " + user.getLastName(),
+                admin.getFirstName() + " " + admin.getLastName()
+            );
+    }
+
+    // ── Templates HTML ──────────────────────────────────────────────────
 
     private String buildApprovalHtml(User user, User admin) {
         String adminName = admin.getFirstName() + " " + admin.getLastName();
@@ -79,117 +131,100 @@ public class EmailService {
             <head>
               <meta charset="UTF-8">
               <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>Compte activé</title>
+              <title>Compte ProActive activé</title>
             </head>
-            <body style="margin:0;padding:0;background-color:#f0f4fa;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-              <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f0f4fa;padding:40px 20px;">
-                <tr>
-                  <td align="center">
-                    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
+            <body style="margin:0;padding:0;background-color:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6f9;padding:32px 16px;">
+                <tr><td align="center">
+                  <table width="580" cellpadding="0" cellspacing="0" border="0"
+                         style="max-width:580px;width:100%%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
 
-                      <!-- Header -->
-                      <tr>
-                        <td align="center" style="background:linear-gradient(135deg,#0b1f3a,#1a3a5c);border-radius:16px 16px 0 0;padding:40px 30px;">
-                          <div style="width:56px;height:56px;background:linear-gradient(145deg,#39b5ff,#4ce6b8);border-radius:14px;display:inline-block;line-height:56px;text-align:center;font-size:24px;font-weight:900;color:#032039;margin-bottom:16px;">PA</div>
-                          <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">ProActive</h1>
-                          <p style="margin:6px 0 0;color:#a8c4e0;font-size:14px;">Gestion de Projets · Suivi Prédictif</p>
-                        </td>
-                      </tr>
+                    <!-- Header -->
+                    <tr>
+                      <td style="background:#0b1f3a;padding:32px 32px 24px;text-align:center;">
+                        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;">
+                          <tr>
+                            <td style="background:#1a73e8;border-radius:10px;width:48px;height:48px;text-align:center;vertical-align:middle;">
+                              <span style="color:#ffffff;font-size:20px;font-weight:900;">PA</span>
+                            </td>
+                          </tr>
+                        </table>
+                        <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">ProActive</h1>
+                        <p style="margin:6px 0 0;color:#94adc8;font-size:13px;">Gestion de Projets</p>
+                      </td>
+                    </tr>
 
-                      <!-- Bannière verte -->
-                      <tr>
-                        <td style="background:#27ae60;padding:16px 30px;text-align:center;">
-                          <p style="margin:0;color:#ffffff;font-size:16px;font-weight:600;">
-                            ✅ &nbsp;Votre compte a été activé avec succès
-                          </p>
-                        </td>
-                      </tr>
+                    <!-- Bannière -->
+                    <tr>
+                      <td style="background:#1e8449;padding:14px 32px;text-align:center;">
+                        <p style="margin:0;color:#ffffff;font-size:15px;font-weight:600;">
+                          Compte activé avec succès
+                        </p>
+                      </td>
+                    </tr>
 
-                      <!-- Corps -->
-                      <tr>
-                        <td style="background:#ffffff;padding:40px 30px;">
-                          <p style="margin:0 0 20px;color:#0b1f3a;font-size:18px;font-weight:600;">
-                            Bonjour %s,
-                          </p>
-                          <p style="margin:0 0 20px;color:#45576f;font-size:15px;line-height:1.7;">
-                            Nous avons le plaisir de vous informer que votre compte <strong>ProActive</strong> a été
-                            <strong style="color:#27ae60;">approuvé et activé</strong> par l'administrateur.
-                          </p>
+                    <!-- Corps -->
+                    <tr>
+                      <td style="padding:32px;">
+                        <p style="margin:0 0 16px;color:#1a202c;font-size:17px;font-weight:600;">Bonjour %s,</p>
+                        <p style="margin:0 0 20px;color:#4a5568;font-size:14px;line-height:1.7;">
+                          Votre compte <strong>ProActive</strong> a été approuvé et activé.
+                          Vous pouvez maintenant vous connecter et accéder à la plateforme.
+                        </p>
 
-                          <!-- Carte info compte -->
-                          <table width="100%%" cellpadding="0" cellspacing="0"
-                                 style="background:#f8fbff;border:1px solid #d2e3fc;border-radius:12px;margin:20px 0;">
-                            <tr>
-                              <td style="padding:20px 24px;">
-                                <p style="margin:0 0 12px;color:#6c7f9a;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;">
-                                  Détails de votre compte
-                                </p>
-                                <table width="100%%" cellpadding="0" cellspacing="0">
-                                  <tr>
-                                    <td style="padding:6px 0;color:#45576f;font-size:14px;width:120px;">📧 Email</td>
-                                    <td style="padding:6px 0;color:#0b1f3a;font-size:14px;font-weight:600;">%s</td>
-                                  </tr>
-                                  <tr>
-                                    <td style="padding:6px 0;color:#45576f;font-size:14px;">🎭 Rôle</td>
-                                    <td style="padding:6px 0;">
-                                      <span style="background:#e8f0fe;color:#1a73e8;padding:3px 10px;border-radius:6px;font-size:13px;font-weight:600;">
-                                        %s
-                                      </span>
-                                    </td>
-                                  </tr>
-                                  <tr>
-                                    <td style="padding:6px 0;color:#45576f;font-size:14px;">✅ Statut</td>
-                                    <td style="padding:6px 0;">
-                                      <span style="background:#e8f8ee;color:#27ae60;padding:3px 10px;border-radius:6px;font-size:13px;font-weight:600;">
-                                        Actif
-                                      </span>
-                                    </td>
-                                  </tr>
-                                </table>
-                              </td>
-                            </tr>
-                          </table>
+                        <!-- Tableau infos -->
+                        <table width="100%%" cellpadding="0" cellspacing="0" border="0"
+                               style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin:20px 0;">
+                          <tr>
+                            <td style="padding:16px 20px;">
+                              <p style="margin:0 0 10px;color:#718096;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
+                                Informations du compte
+                              </p>
+                              <table width="100%%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                  <td style="padding:5px 0;color:#718096;font-size:13px;width:100px;">Email</td>
+                                  <td style="padding:5px 0;color:#1a202c;font-size:13px;font-weight:600;">%s</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:5px 0;color:#718096;font-size:13px;">Role</td>
+                                  <td style="padding:5px 0;color:#1a73e8;font-size:13px;font-weight:600;">%s</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding:5px 0;color:#718096;font-size:13px;">Statut</td>
+                                  <td style="padding:5px 0;color:#1e8449;font-size:13px;font-weight:600;">Actif</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
 
-                          <!-- Bouton CTA -->
-                          <table width="100%%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
-                            <tr>
-                              <td align="center">
-                                <a href="http://localhost:4200/login"
-                                   style="display:inline-block;background:linear-gradient(135deg,#1a73e8,#1557b0);color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:10px;letter-spacing:0.3px;">
-                                  🚀 &nbsp;Se connecter à ProActive
-                                </a>
-                              </td>
-                            </tr>
-                          </table>
+                        <p style="margin:0;color:#4a5568;font-size:13px;line-height:1.7;">
+                          Pour toute question, contactez votre administrateur.
+                        </p>
+                      </td>
+                    </tr>
 
-                          <p style="margin:0;color:#45576f;font-size:14px;line-height:1.7;">
-                            Si vous avez des questions, n'hésitez pas à contacter votre administrateur.
-                          </p>
-                        </td>
-                      </tr>
+                    <!-- Footer -->
+                    <tr>
+                      <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
+                        <table width="100%%" cellpadding="0" cellspacing="0" border="0">
+                          <tr>
+                            <td>
+                              <p style="margin:0;color:#a0aec0;font-size:12px;">Approuvé par</p>
+                              <p style="margin:3px 0 0;color:#1a202c;font-size:13px;font-weight:600;">%s</p>
+                              <p style="margin:2px 0 0;color:#718096;font-size:12px;">Administrateur ProActive</p>
+                            </td>
+                            <td align="right">
+                              <p style="margin:0;color:#cbd5e0;font-size:11px;">ProActive Platform</p>
+                              <p style="margin:2px 0 0;color:#cbd5e0;font-size:11px;">© 2026</p>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
 
-                      <!-- Signature admin -->
-                      <tr>
-                        <td style="background:#f8fafc;border-top:1px solid #e9edf5;padding:20px 30px;border-radius:0 0 16px 16px;">
-                          <table width="100%%" cellpadding="0" cellspacing="0">
-                            <tr>
-                              <td>
-                                <p style="margin:0;color:#8090a8;font-size:13px;">Approuvé par</p>
-                                <p style="margin:4px 0 0;color:#0b1f3a;font-size:14px;font-weight:600;">%s</p>
-                                <p style="margin:2px 0 0;color:#6c7f9a;font-size:12px;">Administrateur ProActive</p>
-                              </td>
-                              <td align="right">
-                                <p style="margin:0;color:#c0c8d4;font-size:11px;">ProActive Platform</p>
-                                <p style="margin:2px 0 0;color:#c0c8d4;font-size:11px;">© 2026 Tous droits réservés</p>
-                              </td>
-                            </tr>
-                          </table>
-                        </td>
-                      </tr>
-
-                    </table>
-                  </td>
-                </tr>
+                  </table>
+                </td></tr>
               </table>
             </body>
             </html>
@@ -203,48 +238,50 @@ public class EmailService {
         return """
             <!DOCTYPE html>
             <html lang="fr">
-            <head><meta charset="UTF-8"><title>Demande refusée</title></head>
-            <body style="margin:0;padding:0;background-color:#f0f4fa;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;">
-              <table width="100%%" cellpadding="0" cellspacing="0" style="background-color:#f0f4fa;padding:40px 20px;">
-                <tr>
-                  <td align="center">
-                    <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%%;">
-                      <tr>
-                        <td align="center" style="background:linear-gradient(135deg,#0b1f3a,#1a3a5c);border-radius:16px 16px 0 0;padding:40px 30px;">
-                          <div style="width:56px;height:56px;background:linear-gradient(145deg,#39b5ff,#4ce6b8);border-radius:14px;display:inline-block;line-height:56px;text-align:center;font-size:24px;font-weight:900;color:#032039;margin-bottom:16px;">PA</div>
-                          <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;">ProActive</h1>
-                          <p style="margin:6px 0 0;color:#a8c4e0;font-size:14px;">Gestion de Projets · Suivi Prédictif</p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="background:#e74c3c;padding:16px 30px;text-align:center;">
-                          <p style="margin:0;color:#ffffff;font-size:16px;font-weight:600;">
-                            ❌ &nbsp;Votre demande d'inscription n'a pas été acceptée
-                          </p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="background:#ffffff;padding:40px 30px;">
-                          <p style="margin:0 0 20px;color:#0b1f3a;font-size:18px;font-weight:600;">Bonjour %s,</p>
-                          <p style="margin:0 0 20px;color:#45576f;font-size:15px;line-height:1.7;">
-                            Nous vous informons que votre demande de création de compte <strong>ProActive</strong>
-                            n'a pas pu être approuvée pour le moment.
-                          </p>
-                          <p style="margin:0;color:#45576f;font-size:14px;line-height:1.7;">
-                            Pour plus d'informations, veuillez contacter directement votre administrateur.
-                          </p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="background:#f8fafc;border-top:1px solid #e9edf5;padding:20px 30px;border-radius:0 0 16px 16px;">
-                          <p style="margin:0;color:#8090a8;font-size:13px;">Décision prise par</p>
-                          <p style="margin:4px 0 0;color:#0b1f3a;font-size:14px;font-weight:600;">%s</p>
-                          <p style="margin:2px 0 0;color:#6c7f9a;font-size:12px;">Administrateur ProActive</p>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
+            <head><meta charset="UTF-8"><title>Demande ProActive</title></head>
+            <body style="margin:0;padding:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;">
+              <table width="100%%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f6f9;padding:32px 16px;">
+                <tr><td align="center">
+                  <table width="580" cellpadding="0" cellspacing="0" border="0"
+                         style="max-width:580px;width:100%%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+                    <tr>
+                      <td style="background:#0b1f3a;padding:32px;text-align:center;">
+                        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;">
+                          <tr>
+                            <td style="background:#1a73e8;border-radius:10px;width:48px;height:48px;text-align:center;vertical-align:middle;">
+                              <span style="color:#fff;font-size:20px;font-weight:900;">PA</span>
+                            </td>
+                          </tr>
+                        </table>
+                        <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">ProActive</h1>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="background:#c0392b;padding:14px 32px;text-align:center;">
+                        <p style="margin:0;color:#fff;font-size:15px;font-weight:600;">Demande d'inscription non acceptée</p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="padding:32px;">
+                        <p style="margin:0 0 16px;color:#1a202c;font-size:17px;font-weight:600;">Bonjour %s,</p>
+                        <p style="margin:0 0 16px;color:#4a5568;font-size:14px;line-height:1.7;">
+                          Votre demande de création de compte <strong>ProActive</strong>
+                          n'a pas pu être approuvée pour le moment.
+                        </p>
+                        <p style="margin:0;color:#4a5568;font-size:14px;line-height:1.7;">
+                          Pour plus d'informations, contactez directement votre administrateur.
+                        </p>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
+                        <p style="margin:0;color:#a0aec0;font-size:12px;">Décision prise par</p>
+                        <p style="margin:3px 0 0;color:#1a202c;font-size:13px;font-weight:600;">%s</p>
+                        <p style="margin:2px 0 0;color:#718096;font-size:12px;">Administrateur ProActive</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td></tr>
               </table>
             </body>
             </html>

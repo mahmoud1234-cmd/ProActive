@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,6 +16,8 @@ public class UserSummaryResponse {
     private String firstName;
     private String lastName;
     private User.Role role;
+    private User.Status status;
+    private LocalDateTime createdAt;
 
     public static UserSummaryResponse from(User user) {
         return new UserSummaryResponse(
@@ -21,7 +25,9 @@ public class UserSummaryResponse {
             user.getEmail(),
             user.getFirstName(),
             user.getLastName(),
-            user.getRole()
+            user.getRole(),
+            user.getStatus(),
+            user.getCreatedAt()
         );
     }
 }
