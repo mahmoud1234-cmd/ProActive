@@ -50,6 +50,15 @@ public class DataInitializer implements ApplicationRunner {
             log.debug("Migration contrainte feature : {}", e.getMessage());
         }
 
+        // ── ÉTAPE 3 : Mettre à jour la contrainte CHECK user.status pour inclure BANNED ──
+        try {
+            // Supprimer l'ancienne contrainte si elle existe
+            jdbcTemplate.execute("ALTER TABLE \"user\" DROP CONSTRAINT IF EXISTS user_status_check");
+            log.debug("Ancienne contrainte user_status_check supprimée");
+        } catch (Exception e) {
+            log.debug("Pas de contrainte user_status_check à supprimer : {}", e.getMessage());
+        }
+
         // ── ÉTAPE 3 : Reset les comptes de test (mot de passe + status) ─────
         resetOrCreate("admin@proactive.com",   "admin123",   "Admin",  "ProActive", User.Role.ADMIN);
         resetOrCreate("manager@proactive.com", "manager123", "Marie",  "Martin",    User.Role.MANAGER);

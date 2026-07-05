@@ -74,7 +74,9 @@ public class User implements UserDetails {
     public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() { return true; }
+    public boolean isAccountNonLocked() {
+        return this.status != Status.BANNED;
+    }
 
     @Override
     public boolean isCredentialsNonExpired() { return true; }
@@ -92,6 +94,7 @@ public class User implements UserDetails {
     public enum Status {
         PENDING,   // En attente d'approbation
         APPROVED,  // Approuvé, peut se connecter
-        REJECTED   // Rejeté
+        REJECTED,  // Rejeté
+        BANNED     // Banni
     }
 }
