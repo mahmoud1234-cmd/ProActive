@@ -1,0 +1,203 @@
+<div class="profile-page">
+
+  <!-- ══════ SIDEBAR ══════ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="/logo.png" alt="ProActive" class="logo-circle">
+      <div>
+        <span class="brand-name">ProActive</span>
+        <span class="brand-sub">Mon profil</span>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <span class="nav-label">Navigation</span>
+      <a routerLink="/dashboard" class="nav-link">
+        <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+      </a>
+      <a routerLink="/profile" class="nav-link active">
+        <i class="bi bi-person-fill"></i><span>Mon profil</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="u-av">{{ userName.charAt(0) }}</div>
+        <div>
+          <strong>{{ userName }}</strong>
+          <span class="role-tag" [ngClass]="getRoleClass(userRole)">{{ userRole }}</span>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════ CONTENU ══════ -->
+  <main class="main-content">
+
+    <header class="page-header">
+      <h1><i class="bi bi-person-circle"></i> Mon profil</h1>
+      <p>Modifiez vos informations personnelles et votre mot de passe.</p>
+    </header>
+
+    <!-- Chargement -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement du profil...</p>
+    </div>
+
+    <div *ngIf="!loading && profile" class="profile-grid">
+
+      <!-- ══ Carte avatar ══ -->
+      <div class="avatar-card">
+        <div class="big-avatar">{{ initials() }}</div>
+        <h2>{{ profile.firstName }} {{ profile.lastName }}</h2>
+        <span class="role-tag" [ngClass]="getRoleClass(profile.role)">{{ profile.role }}</span>
+        <p class="profile-email">{{ profile.email }}</p>
+        <p class="profile-since">
+          <i class="bi bi-calendar3"></i>
+          Inscrit le {{ profile.createdAt | date:'dd/MM/yyyy' }}
+        </p>
+        <div class="status-row">
+          <span class="status-chip" [ngClass]="profile.status === 'APPROVED' ? 'chip-active' : 'chip-other'">
+            <i class="bi" [ngClass]="profile.status === 'APPROVED' ? 'bi-check-circle-fill' : 'bi-circle'"></i>
+            {{ profile.status === 'APPROVED' ? 'Actif' : profile.status }}
+          </span>
+        </div>
+      </div>
+
+      <!-- ══ Formulaires ══ -->
+      <div class="forms-col">
+
+        <!-- Infos personnelles -->
+        <section class="form-card">
+          <div class="form-card-header">
+            <i class="bi bi-person-lines-fill"></i>
+            <h3>Informations personnelles</h3>
+          </div>
+
+          <div *ngIf="infoSuccess" class="notif notif-ok"><i class="bi bi-check-circle-fill"></i> {{ infoSuccess }}</div>
+          <div *ngIf="infoError"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ infoError }}</div>
+
+          <form [formGroup]="infoForm" (ngSubmit)="saveInfo()">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Prénom</label>
+                <input type="text" formControlName="firstName" class="form-ctrl"
+                  [class.invalid]="f('firstName').invalid && f('firstName').touched" />
+                <span *ngIf="f('firstName').invalid && f('firstName').touched" class="err-txt">
+                  Minimum 2 caractères
+                </span>
+              </div>
+              <div class="form-group">
+                <label>Nom</label>
+                <input type="text" formControlName="lastName" class="form-ctrl"
+                  [class.invalid]="f('lastName').invalid && f('lastName').touched" />
+                <span *ngIf="f('lastName').invalid && f('lastName').touched" class="err-txt">
+                  Minimum 2 caractères
+                </span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" formControlName="email" class="form-ctrl"
+                [class.invalid]="f('email').invalid && f('email').touched" />
+              <span *ngIf="f('email').invalid && f('email').touched" class="err-txt">Email invalide</span>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save" [disabled]="savingInfo || infoForm.invalid">
+                <span *ngIf="savingInfo" class="spinner-border spinner-border-sm"></span>
+                <i *ngIf="!savingInfo" class="bi bi-floppy-fill"></i>
+                {{ savingInfo ? 'Enregistrement...' : 'Enregistrer' }}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Mot de passe -->
+        <section class="form-card">
+          <div class="form-card-header">
+            <i class="bi bi-shield-lock-fill"></i>
+            <h3>Changer le mot de passe</h3>
+          </div>
+
+          <div *ngIf="pwdSuccess" class="notif notif-ok"><i class="bi bi-check-circle-fill"></i> {{ pwdSuccess }}</div>
+          <div *ngIf="pwdError"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ pwdError }}</div>
+
+          <form [formGroup]="passwordForm" (ngSubmit)="savePwd()">
+
+            <div class="form-group">
+              <label>Mot de passe actuel</label>
+              <div class="input-eye">
+                <input [type]="showCurrentPwd ? 'text' : 'password'"
+                       formControlName="currentPassword" class="form-ctrl"
+                  [class.invalid]="p('currentPassword').invalid && p('currentPassword').touched" />
+                <button type="button" class="eye-btn" (click)="showCurrentPwd = !showCurrentPwd">
+                  <i class="bi" [ngClass]="showCurrentPwd ? 'bi-eye-slash' : 'bi-eye'"></i>
+                </button>
+              </div>
+              <span *ngIf="p('currentPassword').invalid && p('currentPassword').touched" class="err-txt">Requis</span>
+            </div>
+
+            <div class="form-group">
+              <label>Nouveau mot de passe</label>
+              <div class="input-eye">
+                <input [type]="showNewPwd ? 'text' : 'password'"
+                       formControlName="newPassword" class="form-ctrl"
+                  [class.invalid]="p('newPassword').invalid && p('newPassword').touched" />
+                <button type="button" class="eye-btn" (click)="showNewPwd = !showNewPwd">
+                  <i class="bi" [ngClass]="showNewPwd ? 'bi-eye-slash' : 'bi-eye'"></i>
+                </button>
+              </div>
+              <span *ngIf="p('newPassword').invalid && p('newPassword').touched" class="err-txt">Minimum 6 caractères</span>
+            </div>
+
+            <div class="form-group">
+              <label>Confirmer le nouveau mot de passe</label>
+              <div class="input-eye">
+                <input [type]="showConfirmPwd ? 'text' : 'password'"
+                       formControlName="confirmPassword" class="form-ctrl"
+                  [class.invalid]="(p('confirmPassword').touched && passwordForm.errors?.['mismatch'])">
+                <button type="button" class="eye-btn" (click)="showConfirmPwd = !showConfirmPwd">
+                  <i class="bi" [ngClass]="showConfirmPwd ? 'bi-eye-slash' : 'bi-eye'"></i>
+                </button>
+              </div>
+              <span *ngIf="p('confirmPassword').touched && passwordForm.errors?.['mismatch']" class="err-txt">
+                Les mots de passe ne correspondent pas
+              </span>
+            </div>
+
+            <!-- Indicateur force mot de passe -->
+            <div *ngIf="p('newPassword').value" class="strength-bar">
+              <div class="strength-track">
+                <div class="strength-fill"
+                     [ngClass]="getStrengthClass(p('newPassword').value)"
+                     [style.width]="getStrengthPct(p('newPassword').value)">
+                </div>
+              </div>
+              <span class="strength-label" [ngClass]="getStrengthClass(p('newPassword').value)">
+                {{ getStrengthLabel(p('newPassword').value) }}
+              </span>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-save"
+                [disabled]="savingPwd || passwordForm.invalid">
+                <span *ngIf="savingPwd" class="spinner-border spinner-border-sm"></span>
+                <i *ngIf="!savingPwd" class="bi bi-key-fill"></i>
+                {{ savingPwd ? 'Modification...' : 'Modifier le mot de passe' }}
+              </button>
+            </div>
+          </form>
+        </section>
+
+      </div>
+    </div>
+  </main>
+</div>

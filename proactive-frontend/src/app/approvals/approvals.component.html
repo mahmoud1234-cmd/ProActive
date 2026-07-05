@@ -1,0 +1,126 @@
+<div class="approvals-page">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">PA</div>
+      <div>
+        <span class="brand-name">ProActive</span>
+        <span class="brand-sub">Approbations</span>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <span class="nav-label">Navigation</span>
+      <a routerLink="/dashboard" class="nav-link">
+        <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+      </a>
+      <a routerLink="/approvals" class="nav-link active">
+        <i class="bi bi-person-check-fill"></i><span>Approbations</span>
+        <span *ngIf="pendingUsers.length > 0" class="count-badge">{{ pendingUsers.length }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="u-av">{{ userName.charAt(0) }}</div>
+        <div>
+          <strong>{{ userName }}</strong>
+          <span class="role-tag" [ngClass]="getRoleClass(userRole)">{{ userRole }}</span>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main-content">
+
+    <header class="page-header">
+      <div>
+        <h1><i class="bi bi-person-check-fill"></i> Approbations des comptes</h1>
+        <p>Gérez les demandes d'inscription en attente de validation.</p>
+      </div>
+      <button class="btn-refresh" (click)="load()" [disabled]="loading">
+        <i class="bi bi-arrow-clockwise"></i> Actualiser
+      </button>
+    </header>
+
+    <!-- Notifs -->
+    <div *ngIf="errorMsg"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ errorMsg }}</div>
+    <div *ngIf="successMsg" class="notif notif-ok"> <i class="bi bi-check-circle-fill"></i> {{ successMsg }}</div>
+
+    <!-- Chargement -->
+    <div *ngIf="loading" class="placeholder-center">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement des demandes...</p>
+    </div>
+
+    <!-- Vide -->
+    <div *ngIf="!loading && pendingUsers.length === 0" class="placeholder-center">
+      <i class="bi bi-check2-all"></i>
+      <h2>Aucune demande en attente</h2>
+      <p>Toutes les demandes d'inscription ont été traitées.</p>
+    </div>
+
+    <!-- Grille de cards -->
+    <div *ngIf="!loading && pendingUsers.length > 0" class="cards-grid">
+      <div *ngFor="let user of pendingUsers" class="pending-card">
+
+        <div class="card-header">
+          <div class="card-avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+          <div class="card-user-info">
+            <h3>{{ user.firstName }} {{ user.lastName }}</h3>
+            <span class="card-email">{{ user.email }}</span>
+            <div class="card-meta">
+              <span class="role-tag" [ngClass]="getRoleClass(user.role)">
+                <i class="bi" [ngClass]="getRoleIcon(user.role)"></i>
+                {{ user.role }}
+              </span>
+              <span class="card-date">
+                <i class="bi bi-calendar3"></i>
+                {{ user.createdAt | date:'dd/MM/yyyy à HH:mm' }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="info-item">
+            <i class="bi bi-shield-exclamation"></i>
+            <span>Rôle demandé : <strong>{{ user.role }}</strong></span>
+          </div>
+          <div class="info-item">
+            <i class="bi bi-clock-history"></i>
+            <span>Soumis le {{ user.createdAt | date:'dd MMMM yyyy' }}</span>
+          </div>
+        </div>
+
+        <div class="card-actions">
+          <button class="btn-reject" (click)="reject(user)"
+            [disabled]="processingId === user.id || !canWrite">
+            <span *ngIf="processingId === user.id" class="spinner-border spinner-border-sm"></span>
+            <i *ngIf="processingId !== user.id" class="bi bi-x-lg"></i>
+            Refuser
+          </button>
+          <button class="btn-approve" (click)="approve(user)"
+            [disabled]="processingId === user.id || !canWrite">
+            <span *ngIf="processingId === user.id" class="spinner-border spinner-border-sm"></span>
+            <i *ngIf="processingId !== user.id" class="bi bi-check-lg"></i>
+            Approuver
+          </button>
+        </div>
+
+        <!-- Lecture seule si pas d'écriture -->
+        <div *ngIf="!canWrite" class="readonly-notice">
+          <i class="bi bi-eye"></i> Lecture seule — vous ne pouvez pas approuver/refuser
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

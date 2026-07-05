@@ -1,0 +1,83 @@
+@import "bootstrap/dist/css/bootstrap.min.css";
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: linear-gradient(135deg, #e8f0fe 0%, #f8f9fa 100%);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.text-primary {
+  color: #1a73e8 !important;
+}
+
+.btn-primary {
+  background-color: #1a73e8;
+  border-color: #1a73e8;
+}
+
+.btn-primary:hover {
+  background-color: #1557b0;
+  border-color: #1557b0;
+}
+
+.btn-success {
+  background-color: #34a853;
+  border-color: #34a853;
+}
+
+.btn-success:hover {
+  background-color: #2d8e47;
+  border-color: #2d8e47;
+}
+
+/* ── Logo global ───────────────────────────────────── */
+/* Petite version circulaire dans les sidebars */
+.logo-circle {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+/* Version moyenne pour les headers */
+.logo-md {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  flex-shrink: 0;
+}
+
+/* Grande version pour les pages auth */
+.logo-lg {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  margin: 0 auto;
+  box-shadow: 0 4px 20px rgba(26,115,232,0.25);
+}
+
+/* Login/Register CSS logo */
+.app-logo {
+  height: 90px;
+  width: 90px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  margin: 0 auto;
+  box-shadow: 0 4px 20px rgba(26,115,232,0.25);
+}

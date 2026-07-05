@@ -1,0 +1,33 @@
+.min-vh-100 { min-height: 100vh; }
+
+.card { border-radius: 15px; }
+
+.btn-success {
+  background: linear-gradient(135deg, #34a853, #1e7e34);
+  border: none;
+  transition: all 0.3s ease;
+}
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(52,168,83,.4);
+}
+.btn-success:disabled { transform: none; box-shadow: none; }
+
+.form-control:focus {
+  border-color: #34a853;
+  box-shadow: 0 0 0 .2rem rgba(52,168,83,.25);
+}
+.form-control.is-invalid { border-color: #dc3545; }
+.alert { border-radius: 10px; }
+
+/* Écran de confirmation */
+.pending-icon {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, #fff3cd, #ffe082);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto;
+}
+.pending-icon i {
+  font-size: 2.2rem;
+  color: #f57c00;
+}

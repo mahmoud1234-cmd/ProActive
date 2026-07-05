@@ -1,0 +1,127 @@
+<div class="app-layout">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar" [class.open]="sidebarOpen">
+
+    <div class="brand">
+      <img src="/logo.png" alt="ProActive" class="logo-circle">
+      <div>
+        <span class="brand-name">ProActive</span>
+        <span class="brand-sub">Workspace</span>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <span class="nav-label">Navigation</span>
+
+      <!-- Spinner pendant le chargement des permissions -->
+      <div *ngIf="loadingPerms" class="nav-loading">
+        <div class="spinner-border spinner-border-sm"></div>
+        <span>Chargement...</span>
+      </div>
+
+      <!-- Items dynamiques selon permissions réelles -->
+      <ng-container *ngIf="!loadingPerms">
+
+        <ng-container *ngFor="let item of visibleNavItems">
+
+          <!-- Lien avec route externe -->
+          <a
+            *ngIf="item.route"
+            [routerLink]="item.route"
+            class="nav-btn"
+            [class.nav-btn-admin]="item.adminOnly"
+          >
+            <i class="bi" [ngClass]="item.icon"></i>
+            <span>{{ item.label }}</span>
+            <span *ngIf="item.adminOnly" class="admin-badge">ADMIN</span>
+            <i
+              *ngIf="!item.adminOnly && !isAdmin && getAccessIcon(item.feature)"
+              class="bi nav-level-icon"
+              [ngClass]="getAccessIcon(item.feature)"
+              [title]="'Niveau: ' + myPermissions[item.feature]"
+            ></i>
+          </a>
+
+          <!-- Lien interne dashboard -->
+          <button
+            *ngIf="!item.route"
+            class="nav-btn"
+            [class.nav-readonly]="!isAdmin && !canWrite(item.feature)"
+            (click)="sidebarOpen = false"
+          >
+            <i class="bi" [ngClass]="item.icon"></i>
+            <span>{{ item.label }}</span>
+            <i
+              *ngIf="!isAdmin && getAccessIcon(item.feature)"
+              class="bi nav-level-icon"
+              [ngClass]="getAccessIcon(item.feature)"
+              [title]="'Niveau: ' + myPermissions[item.feature]"
+            ></i>
+          </button>
+
+        </ng-container>
+
+        <!-- Aucun accès -->
+        <div *ngIf="visibleNavItems.length === 0" class="nav-empty">
+          <i class="bi bi-slash-circle"></i>
+          <span>Aucun accès configuré</span>
+        </div>
+
+      </ng-container>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div class="user-card" routerLink="/profile" style="cursor:pointer;" title="Mon profil">
+        <div class="user-avatar-sm">{{ userName.charAt(0) }}</div>
+        <div class="user-info">
+          <strong>{{ userName }}</strong>
+          <span class="role-tag" [ngClass]="getRoleClass(userRole)">{{ userRole }}</span>
+        </div>
+        <i class="bi bi-pencil-fill" style="font-size:.7rem;color:#7a95bb;margin-left:auto;"></i>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════ CONTENU ══════════ -->
+  <div class="content-area">
+
+    <header class="topbar">
+      <button class="menu-toggle" (click)="toggleSidebar()">
+        <i class="bi bi-list"></i>
+      </button>
+      <div class="topbar-title">
+        <h1>Dashboard</h1>
+        <p>Bienvenue, {{ userName }}</p>
+      </div>
+    </header>
+
+    <main class="view-dashboard">
+      <div class="metrics-row">
+        <div class="metric-card">
+          <i class="bi bi-kanban-fill"></i>
+          <div><span>Projets actifs</span><strong>12</strong></div>
+        </div>
+        <div class="metric-card">
+          <i class="bi bi-list-check"></i>
+          <div><span>Tâches ouvertes</span><strong>37</strong></div>
+        </div>
+        <div class="metric-card">
+          <i class="bi bi-graph-up-arrow"></i>
+          <div><span>Taux de complétion</span><strong>84%</strong></div>
+        </div>
+      </div>
+
+      <div class="info-panel">
+        <h3>Vue générale</h3>
+        <p>Suivez l'avancement global de vos projets, les blocages critiques et les priorités de la semaine.</p>
+      </div>
+    </main>
+
+  </div>
+</div>

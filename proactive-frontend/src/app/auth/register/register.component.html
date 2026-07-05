@@ -1,0 +1,140 @@
+<div class="container">
+  <div class="row justify-content-center min-vh-100 align-items-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-lg border-0">
+        <div class="card-body p-5">
+
+          <!-- En-tête -->
+          <div class="text-center mb-4">
+            <img src="/logo.png" alt="ProActive" class="app-logo mb-2">
+            <p class="text-muted">Gestion de Projets • Suivi Prédictif</p>
+          </div>
+
+          <!-- ══ ÉCRAN DE CONFIRMATION POST-INSCRIPTION ══ -->
+          <div *ngIf="registered" class="text-center py-3">
+            <div class="pending-icon mb-3">
+              <i class="bi bi-hourglass-split"></i>
+            </div>
+            <h4 class="fw-bold mb-2">Demande soumise !</h4>
+            <p class="text-muted mb-4">
+              Votre compte est <strong>en attente d'approbation</strong>.<br>
+              Un administrateur va examiner votre demande.<br>
+              Vous pourrez vous connecter une fois approuvé.
+            </p>
+            <div class="alert alert-info small text-start" role="alert">
+              <i class="bi bi-info-circle-fill me-2"></i>
+              {{ successMessage }}
+            </div>
+            <a routerLink="/login" class="btn btn-primary w-100 py-2 fw-semibold mt-2">
+              <i class="bi bi-arrow-left me-2"></i>Retour à la connexion
+            </a>
+          </div>
+
+          <!-- ══ FORMULAIRE D'INSCRIPTION ══ -->
+          <ng-container *ngIf="!registered">
+            <h5 class="text-center mb-4">Créer un compte</h5>
+
+            <form [formGroup]="registerForm" (ngSubmit)="onSubmit()" novalidate>
+
+              <!-- Prénom -->
+              <div class="mb-3">
+                <label for="firstName" class="form-label fw-semibold">Prénom</label>
+                <input type="text" id="firstName" class="form-control"
+                  formControlName="firstName" placeholder="John"
+                  [class.is-invalid]="firstName.invalid && firstName.touched" />
+                <div *ngIf="firstName.invalid && firstName.touched" class="text-danger small">
+                  <span *ngIf="firstName.errors?.['required']">Le prénom est obligatoire</span>
+                  <span *ngIf="firstName.errors?.['minlength']">Minimum 2 caractères</span>
+                </div>
+              </div>
+
+              <!-- Nom -->
+              <div class="mb-3">
+                <label for="lastName" class="form-label fw-semibold">Nom</label>
+                <input type="text" id="lastName" class="form-control"
+                  formControlName="lastName" placeholder="Doe"
+                  [class.is-invalid]="lastName.invalid && lastName.touched" />
+                <div *ngIf="lastName.invalid && lastName.touched" class="text-danger small">
+                  <span *ngIf="lastName.errors?.['required']">Le nom est obligatoire</span>
+                  <span *ngIf="lastName.errors?.['minlength']">Minimum 2 caractères</span>
+                </div>
+              </div>
+
+              <!-- Email -->
+              <div class="mb-3">
+                <label for="email" class="form-label fw-semibold">Email</label>
+                <input type="email" id="email" class="form-control"
+                  formControlName="email" placeholder="john.doe@example.com"
+                  [class.is-invalid]="email.invalid && email.touched" />
+                <div *ngIf="email.invalid && email.touched" class="text-danger small">
+                  <span *ngIf="email.errors?.['required']">L'email est obligatoire</span>
+                  <span *ngIf="email.errors?.['email']">Format d'email invalide</span>
+                </div>
+              </div>
+
+              <!-- Rôle -->
+              <div class="mb-3">
+                <label for="role" class="form-label fw-semibold">
+                  Rôle demandé
+                  <span class="text-muted small fw-normal ms-1">(soumis à approbation)</span>
+                </label>
+                <select id="role" class="form-select" formControlName="role">
+                  <option value="USER">Utilisateur</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="ADMIN">Administrateur</option>
+                </select>
+                <div class="form-text">
+                  <i class="bi bi-shield-check me-1"></i>
+                  Tout rôle est soumis à validation avant activation.
+                </div>
+              </div>
+
+              <!-- Mot de passe -->
+              <div class="mb-3">
+                <label for="password" class="form-label fw-semibold">Mot de passe</label>
+                <input type="password" id="password" class="form-control"
+                  formControlName="password" placeholder="••••••••"
+                  [class.is-invalid]="password.invalid && password.touched" />
+                <div *ngIf="password.invalid && password.touched" class="text-danger small">
+                  <span *ngIf="password.errors?.['required']">Le mot de passe est obligatoire</span>
+                  <span *ngIf="password.errors?.['minlength']">Minimum 6 caractères</span>
+                </div>
+              </div>
+
+              <!-- Confirmer -->
+              <div class="mb-3">
+                <label for="confirmPassword" class="form-label fw-semibold">Confirmer</label>
+                <input type="password" id="confirmPassword" class="form-control"
+                  formControlName="confirmPassword" placeholder="••••••••"
+                  [class.is-invalid]="registerForm.errors?.['passwordMismatch'] && confirmPassword.touched" />
+                <div *ngIf="registerForm.errors?.['passwordMismatch'] && confirmPassword.touched"
+                  class="text-danger small">
+                  Les mots de passe ne correspondent pas
+                </div>
+              </div>
+
+              <!-- Erreur -->
+              <div *ngIf="errorMessage" class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {{ errorMessage }}
+              </div>
+
+              <button type="submit" class="btn btn-success w-100 py-2 fw-semibold"
+                [disabled]="loading">
+                <span *ngIf="loading" class="spinner-border spinner-border-sm me-2"></span>
+                {{ loading ? "Envoi en cours..." : "Soumettre ma demande" }}
+              </button>
+            </form>
+
+            <hr class="my-4" />
+            <p class="text-center mb-0">
+              Déjà un compte ?
+              <a routerLink="/login" class="text-primary fw-semibold text-decoration-none">Se connecter</a>
+            </p>
+          </ng-container>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

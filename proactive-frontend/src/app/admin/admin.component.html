@@ -1,0 +1,180 @@
+<div class="page-layout">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">PA</div>
+      <div>
+        <span class="brand-name">ProActive</span>
+        <span class="brand-sub">Administration</span>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <a routerLink="/dashboard" class="nav-item">
+        <i class="bi bi-grid-1x2-fill"></i>
+        <span>Dashboard</span>
+      </a>
+      <a routerLink="/admin" class="nav-item active">
+        <i class="bi bi-shield-lock-fill"></i>
+        <span>Permissions</span>
+      </a>
+    </nav>
+
+    <!-- Liste des utilisateurs dans la sidebar -->
+    <div class="sidebar-users">
+      <div class="sidebar-users-header">
+        <span>Utilisateurs</span>
+        <span class="count">{{ users.length }}</span>
+      </div>
+
+      <div *ngIf="loading" class="sidebar-loading">
+        <div class="spinner-border spinner-border-sm text-light"></div>
+      </div>
+
+      <ul *ngIf="!loading" class="user-list">
+        <li
+          *ngFor="let user of users"
+          class="user-item"
+          [class.active]="selectedUser?.id === user.id"
+          (click)="selectUser(user)"
+        >
+          <div class="avatar">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+          <div class="user-meta">
+            <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+            <span>{{ user.email }}</span>
+          </div>
+          <span class="role-pill" [ngClass]="getRoleClass(user.role)">{{ user.role }}</span>
+        </li>
+        <li *ngIf="users.length === 0" class="no-users">
+          <i class="bi bi-people"></i>
+          <span>Aucun utilisateur</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="admin-info">
+        <i class="bi bi-person-circle"></i>
+        <div>
+          <strong>{{ currentUserName }}</strong>
+          <small>Administrateur</small>
+        </div>
+      </div>
+      <button class="logout-btn" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════════ CONTENU PRINCIPAL ══════════════ -->
+  <main class="main-content">
+
+    <!-- Header -->
+    <header class="page-header">
+      <div>
+        <h1>Gestion des permissions</h1>
+        <p>Contrôlez l'accès aux fonctionnalités pour chaque utilisateur.</p>
+      </div>
+    </header>
+
+    <!-- Notifications -->
+    <div *ngIf="errorMessage" class="notif notif-error">
+      <i class="bi bi-x-circle-fill"></i> {{ errorMessage }}
+    </div>
+    <div *ngIf="successMessage" class="notif notif-success">
+      <i class="bi bi-check-circle-fill"></i> {{ successMessage }}
+    </div>
+
+    <!-- État vide — aucun utilisateur sélectionné -->
+    <div *ngIf="!selectedUser" class="empty-pane">
+      <div class="empty-icon"><i class="bi bi-arrow-left-circle"></i></div>
+      <h2>Sélectionnez un utilisateur</h2>
+      <p>Choisissez un utilisateur dans la liste à gauche pour gérer ses permissions.</p>
+    </div>
+
+    <!-- Chargement permissions -->
+    <div *ngIf="selectedUser && loadingPermissions" class="empty-pane">
+      <div class="spinner-border text-primary"></div>
+      <p>Chargement des permissions...</p>
+    </div>
+
+    <!-- Panneau de permissions -->
+    <div *ngIf="selectedUser && !loadingPermissions && userPermissions" class="permissions-pane">
+
+      <!-- En-tête utilisateur sélectionné -->
+      <div class="user-header">
+        <div class="user-header-left">
+          <div class="avatar-lg">
+            {{ selectedUser.firstName[0] }}{{ selectedUser.lastName[0] }}
+          </div>
+          <div>
+            <h2>{{ selectedUser.firstName }} {{ selectedUser.lastName }}
+              <span class="role-pill ms" [ngClass]="getRoleClass(selectedUser.role)">{{ selectedUser.role }}</span>
+            </h2>
+            <p>{{ selectedUser.email }}</p>
+          </div>
+        </div>
+        <div class="user-header-actions">
+          <button class="btn-reset" (click)="resetToDefault()" [disabled]="saving || !hasChanges()">
+            <i class="bi bi-arrow-counterclockwise"></i> Annuler
+          </button>
+          <button class="btn-save" (click)="savePermissions()" [disabled]="saving || !hasChanges()">
+            <span *ngIf="saving" class="spinner-border spinner-border-sm"></span>
+            <i *ngIf="!saving" class="bi bi-check-lg"></i>
+            {{ saving ? 'Sauvegarde...' : 'Sauvegarder' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Grille des fonctionnalités -->
+      <div class="features-grid">
+        <div
+          *ngFor="let feature of allFeatures"
+          class="feature-card"
+          [ngClass]="getAccessClass(editablePermissions[feature])"
+        >
+          <!-- Icône + nom -->
+          <div class="feature-header">
+            <div class="feature-icon">
+              <i class="bi" [ngClass]="featureIcons[feature]"></i>
+            </div>
+            <div class="feature-info">
+              <span class="feature-name">{{ featureLabels[feature] }}</span>
+              <span *ngIf="isCustom(feature)" class="custom-tag">
+                <i class="bi bi-pencil-fill"></i> Personnalisé
+              </span>
+              <span *ngIf="!isCustom(feature)" class="default-tag">
+                <i class="bi bi-shield-check"></i> Par défaut
+              </span>
+            </div>
+          </div>
+
+          <!-- Sélecteur de niveau -->
+          <div class="access-selector">
+            <button
+              *ngFor="let level of allAccessLevels"
+              class="access-btn"
+              [class.selected]="editablePermissions[feature] === level"
+              [ngClass]="'btn-' + level.toLowerCase()"
+              (click)="editablePermissions[feature] = level"
+            >
+              <i class="bi" [ngClass]="getAccessIcon(level)"></i>
+              <span>{{ accessLevelLabels[level] }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Légende -->
+      <div class="legend">
+        <span class="legend-title">Légende :</span>
+        <span *ngFor="let level of allAccessLevels" class="legend-item" [ngClass]="'leg-' + level.toLowerCase()">
+          <i class="bi" [ngClass]="getAccessIcon(level)"></i>
+          {{ accessLevelLabels[level] }}
+        </span>
+      </div>
+
+    </div>
+  </main>
+</div>
