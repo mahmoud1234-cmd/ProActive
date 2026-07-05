@@ -49,7 +49,7 @@ export class DashboardComponent implements OnInit {
 
   readonly allNavItems: NavItem[] = [
     { feature: 'DASHBOARD',   label: 'Dashboard',    icon: 'bi-grid-1x2-fill' },
-    { feature: 'PROJECTS',    label: 'Projets',      icon: 'bi-kanban-fill' },
+    { feature: 'PROJECTS',    label: 'Projets',      icon: 'bi-kanban-fill',       route: '/projects' },
     { feature: 'TASKS',       label: 'Tâches',       icon: 'bi-list-check' },
     { feature: 'REPORTS',     label: 'Rapports',     icon: 'bi-graph-up-arrow' },
     { feature: 'USERS',       label: 'Utilisateurs', icon: 'bi-people-fill',       route: '/users' },

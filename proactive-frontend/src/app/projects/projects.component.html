@@ -1,0 +1,374 @@
+<div class="projects-page">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="/logo.png" alt="ProActive" class="logo-circle">
+      <div>
+        <span class="brand-name">ProActive</span>
+        <span class="brand-sub">Projets</span>
+      </div>
+    </div>
+    <nav class="nav-section">
+      <span class="nav-label">Navigation</span>
+      <a routerLink="/dashboard" class="nav-link"><i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span></a>
+      <a routerLink="/projects"  class="nav-link active"><i class="bi bi-kanban-fill"></i><span>Projets</span></a>
+    </nav>
+
+    <!-- Stats sidebar -->
+    <div *ngIf="stats" class="sidebar-stats">
+      <div class="stat-row"><span>Total</span><strong>{{ stats.total }}</strong></div>
+      <div class="stat-row active-s"><span>En cours</span><strong>{{ stats.active }}</strong></div>
+      <div class="stat-row plan-s"><span>Planification</span><strong>{{ stats.planning }}</strong></div>
+      <div class="stat-row done-s"><span>Terminés</span><strong>{{ stats.completed }}</strong></div>
+    </div>
+
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-footer">
+      <div class="user-card" routerLink="/profile" style="cursor:pointer">
+        <div class="u-av">{{ userName.charAt(0) }}</div>
+        <div>
+          <strong>{{ userName }}</strong>
+          <span class="role-tag" [ngClass]="getRoleClass(userRole)">{{ userRole }}</span>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══ CONTENU ══ -->
+  <main class="main-content">
+
+    <!-- Header -->
+    <header class="page-header">
+      <div>
+        <h1><i class="bi bi-kanban-fill"></i> Gestion des projets</h1>
+        <p>{{ filtered.length }} projet(s) affiché(s) sur {{ projects.length }}</p>
+      </div>
+      <div class="header-actions">
+        <!-- Vue liste / kanban -->
+        <div class="view-toggle">
+          <button [class.active]="viewMode==='list'"   (click)="viewMode='list'">
+            <i class="bi bi-list-ul"></i>
+          </button>
+          <button [class.active]="viewMode==='kanban'" (click)="viewMode='kanban'">
+            <i class="bi bi-kanban"></i>
+          </button>
+        </div>
+        <button *ngIf="canWrite" class="btn-create" (click)="openCreate()">
+          <i class="bi bi-plus-lg"></i> Nouveau projet
+        </button>
+      </div>
+    </header>
+
+    <!-- Notifications -->
+    <div *ngIf="errorMsg"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ errorMsg }}</div>
+    <div *ngIf="successMsg" class="notif notif-ok"> <i class="bi bi-check-circle-fill"></i> {{ successMsg }}</div>
+
+    <!-- Filtres -->
+    <div class="filters-bar">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" placeholder="Rechercher un projet..." [(ngModel)]="searchTerm" (input)="applyFilters()" />
+      </div>
+      <select [(ngModel)]="filterStatus"   (change)="applyFilters()" class="filter-select">
+        <option value="">Tous les statuts</option>
+        <option *ngFor="let s of allStatuses" [value]="s">{{ statusLabels[s] }}</option>
+      </select>
+      <select [(ngModel)]="filterPriority" (change)="applyFilters()" class="filter-select">
+        <option value="">Toutes priorités</option>
+        <option *ngFor="let p of allPriorities" [value]="p">{{ priorityLabels[p] }}</option>
+      </select>
+    </div>
+
+    <!-- ══ VUE LISTE ══ -->
+    <ng-container *ngIf="viewMode==='list'">
+      <div class="list-layout">
+
+        <!-- Tableau projets -->
+        <div class="projects-table-panel">
+          <div *ngIf="loading" class="placeholder"><div class="spinner-border text-primary"></div><p>Chargement...</p></div>
+          <div *ngIf="!loading && filtered.length===0" class="placeholder">
+            <i class="bi bi-kanban"></i><p>Aucun projet trouvé.</p>
+          </div>
+
+          <table *ngIf="!loading && filtered.length>0" class="projects-table">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Statut</th>
+                <th>Priorité</th>
+                <th>Manager</th>
+                <th>Avancement</th>
+                <th>Échéance</th>
+                <th *ngIf="canWrite"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let p of filtered"
+                  [class.selected]="selected?.id===p.id"
+                  (click)="select(p)">
+                <td>
+                  <div class="proj-name">{{ p.name }}</div>
+                  <div *ngIf="p.description" class="proj-desc">{{ p.description | slice:0:60 }}{{ p.description && p.description.length>60 ? '…' : '' }}</div>
+                </td>
+                <td>
+                  <span class="status-badge" [ngClass]="getStatusClass(p.status)">
+                    {{ statusLabels[p.status] }}
+                  </span>
+                </td>
+                <td>
+                  <span class="priority-badge" [ngClass]="getPriorityClass(p.priority)">
+                    {{ priorityLabels[p.priority] }}
+                  </span>
+                </td>
+                <td>
+                  <span *ngIf="p.managerName" class="manager-chip">{{ p.managerName }}</span>
+                  <span *ngIf="!p.managerName" class="no-manager">—</span>
+                </td>
+                <td>
+                  <div class="progress-wrap">
+                    <div class="progress-bar">
+                      <div class="progress-fill" [style.width]="p.progressPct + '%'"
+                           [class.fill-done]="p.progressPct===100"></div>
+                    </div>
+                    <span class="progress-pct">{{ p.progressPct }}%</span>
+                  </div>
+                </td>
+                <td>
+                  <ng-container *ngIf="p.endDate">
+                    <span [class.overdue]="(getDaysRemaining(p.endDate) ?? 0) < 0 && p.status!=='COMPLETED'">
+                      {{ p.endDate | date:'dd/MM/yyyy' }}
+                    </span>
+                  </ng-container>
+                  <span *ngIf="!p.endDate">—</span>
+                </td>
+                <td *ngIf="canWrite" class="row-actions" (click)="$event.stopPropagation()">
+                  <button class="row-btn" (click)="openEdit(p)" title="Modifier">
+                    <i class="bi bi-pencil-fill"></i>
+                  </button>
+                  <button *ngIf="isAdmin" class="row-btn row-btn-del" (click)="openDelete(p)" title="Supprimer">
+                    <i class="bi bi-trash3-fill"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Détail projet -->
+        <div class="detail-panel" *ngIf="selected && !showForm && !showDeleteModal">
+          <div class="detail-header">
+            <div>
+              <h2>{{ selected.name }}</h2>
+              <div class="detail-badges">
+                <span class="status-badge" [ngClass]="getStatusClass(selected.status)">{{ statusLabels[selected.status] }}</span>
+                <span class="priority-badge" [ngClass]="getPriorityClass(selected.priority)">{{ priorityLabels[selected.priority] }}</span>
+              </div>
+            </div>
+            <div class="detail-header-actions" *ngIf="canWrite">
+              <button class="btn-edit-sm" (click)="openEdit(selected)"><i class="bi bi-pencil-fill"></i></button>
+              <button *ngIf="isAdmin" class="btn-del-sm" (click)="openDelete(selected)"><i class="bi bi-trash3-fill"></i></button>
+            </div>
+          </div>
+
+          <div class="detail-body">
+            <p *ngIf="selected.description" class="detail-desc">{{ selected.description }}</p>
+
+            <div class="detail-progress">
+              <div class="dp-header"><span>Avancement</span><strong>{{ selected.progressPct }}%</strong></div>
+              <div class="progress-bar-lg">
+                <div class="progress-fill-lg" [style.width]="selected.progressPct + '%'"
+                     [class.fill-done]="selected.progressPct===100"></div>
+              </div>
+            </div>
+
+            <div class="detail-grid">
+              <div class="detail-item"><span>Manager</span><strong>{{ selected.managerName ?? '—' }}</strong></div>
+              <div class="detail-item"><span>Budget</span><strong>{{ selected.budget ? (selected.budget | number:'1.0-0') + ' DA' : '—' }}</strong></div>
+              <div class="detail-item"><span>Début</span><strong>{{ selected.startDate ? (selected.startDate | date:'dd/MM/yyyy') : '—' }}</strong></div>
+              <div class="detail-item"><span>Fin</span><strong>{{ selected.endDate ? (selected.endDate | date:'dd/MM/yyyy') : '—' }}</strong></div>
+              <div class="detail-item"><span>Créé par</span><strong>{{ selected.createdByName ?? '—' }}</strong></div>
+              <div class="detail-item"><span>Créé le</span><strong>{{ selected.createdAt | date:'dd/MM/yyyy' }}</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Formulaire -->
+        <div class="detail-panel" *ngIf="showForm">
+          <div class="form-header">
+            <h2>{{ editingId ? 'Modifier le projet' : 'Nouveau projet' }}</h2>
+            <button class="form-close" (click)="cancelForm()"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <form [formGroup]="form" (ngSubmit)="save()" class="proj-form">
+            <div class="form-group">
+              <label>Nom <span class="req">*</span></label>
+              <input type="text" formControlName="name" class="form-ctrl" [class.invalid]="f('name').invalid && f('name').touched" />
+              <span *ngIf="f('name').invalid && f('name').touched" class="err-txt">Nom obligatoire (min 2 caractères)</span>
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea formControlName="description" class="form-ctrl" rows="3"></textarea>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>Statut</label>
+                <select formControlName="status" class="form-ctrl">
+                  <option *ngFor="let s of allStatuses" [value]="s">{{ statusLabels[s] }}</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Priorité</label>
+                <select formControlName="priority" class="form-ctrl">
+                  <option *ngFor="let p of allPriorities" [value]="p">{{ priorityLabels[p] }}</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>Date début</label>
+                <input type="date" formControlName="startDate" class="form-ctrl" />
+              </div>
+              <div class="form-group">
+                <label>Date fin</label>
+                <input type="date" formControlName="endDate" class="form-ctrl" />
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>Budget (DA)</label>
+                <input type="number" formControlName="budget" class="form-ctrl" min="0" />
+              </div>
+              <div class="form-group">
+                <label>Avancement (%) <span class="pct-val">{{ f('progressPct').value }}%</span></label>
+                <input type="range" formControlName="progressPct" class="form-range" min="0" max="100" step="5" />
+              </div>
+            </div>
+            <div class="form-group" *ngIf="isAdmin && managers.length > 0">
+              <label>Manager assigné</label>
+              <select formControlName="managerId" class="form-ctrl">
+                <option value="">— Non assigné —</option>
+                <option *ngFor="let m of managers" [value]="m.id">{{ m.firstName }} {{ m.lastName }}</option>
+              </select>
+            </div>
+            <div *ngIf="errorMsg" class="notif notif-err mt-sm">{{ errorMsg }}</div>
+            <div class="form-actions">
+              <button type="button" class="btn-cancel-sm" (click)="cancelForm()">Annuler</button>
+              <button type="submit" class="btn-save-sm" [disabled]="saving || form.invalid">
+                <span *ngIf="saving" class="spinner-border spinner-border-sm"></span>
+                <i *ngIf="!saving" class="bi bi-floppy-fill"></i>
+                {{ saving ? 'Enregistrement...' : (editingId ? 'Mettre à jour' : 'Créer le projet') }}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Modal suppression -->
+        <div class="detail-panel modal-danger" *ngIf="showDeleteModal && selected">
+          <div class="form-header">
+            <h2><i class="bi bi-trash3-fill"></i> Supprimer le projet</h2>
+            <button class="form-close" (click)="cancelDelete()"><i class="bi bi-x-lg"></i></button>
+          </div>
+          <div class="delete-body">
+            <p>Supprimer définitivement :</p>
+            <p class="delete-name">{{ selected.name }}</p>
+            <p class="delete-warn"><i class="bi bi-exclamation-triangle-fill"></i> Cette action est irréversible.</p>
+          </div>
+          <div class="form-actions">
+            <button class="btn-cancel-sm" (click)="cancelDelete()">Annuler</button>
+            <button class="btn-del-confirm" (click)="confirmDelete()" [disabled]="processingId===selected.id">
+              <span *ngIf="processingId===selected.id" class="spinner-border spinner-border-sm"></span>
+              Confirmer la suppression
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </ng-container>
+
+    <!-- ══ VUE KANBAN ══ -->
+    <ng-container *ngIf="viewMode==='kanban'">
+      <!-- Tip drag & drop -->
+      <div *ngIf="canWrite" class="kanban-tip">
+        <i class="bi bi-arrows-move"></i>
+        Glissez une carte d'une colonne à l'autre pour changer son statut
+      </div>
+      <div class="kanban-board">
+        <div
+          *ngFor="let s of allStatuses"
+          class="kanban-col"
+          [class.drag-over]="dragOverStatus === s"
+          (dragover)="onDragOver($event, s)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event, s)"
+        >
+          <div class="kanban-col-header" [ngClass]="getStatusClass(s)">
+            <span>{{ statusLabels[s] }}</span>
+            <span class="kanban-count">{{ byStatus(s).length }}</span>
+          </div>
+
+          <div class="kanban-cards">
+            <div
+              *ngFor="let p of byStatus(s)"
+              class="kanban-card"
+              [class.selected]="selected?.id===p.id"
+              [draggable]="canWrite"
+              (click)="select(p)"
+              (dragstart)="onDragStart($event, p)"
+              (dragend)="onDragEnd($event)"
+            >
+              <!-- Poignée drag -->
+              <div *ngIf="canWrite" class="drag-handle" title="Glisser pour changer le statut">
+                <i class="bi bi-grip-vertical"></i>
+              </div>
+
+              <div class="kc-top">
+                <span class="kc-name">{{ p.name }}</span>
+                <span class="priority-badge sm" [ngClass]="getPriorityClass(p.priority)">{{ priorityLabels[p.priority] }}</span>
+              </div>
+              <div *ngIf="p.description" class="kc-desc">{{ p.description | slice:0:80 }}…</div>
+
+              <div class="kc-footer">
+                <span *ngIf="p.managerName" class="kc-manager"><i class="bi bi-person-fill"></i> {{ p.managerName }}</span>
+                <div class="kc-progress">
+                  <div class="kc-bar"><div [style.width]="p.progressPct+'%'" class="kc-fill"></div></div>
+                  <span>{{ p.progressPct }}%</span>
+                </div>
+              </div>
+
+              <!-- Dates -->
+              <div *ngIf="p.endDate" class="kc-date" [class.kc-overdue]="(getDaysRemaining(p.endDate) ?? 0) < 0 && p.status!=='COMPLETED'">
+                <i class="bi bi-calendar3"></i>
+                {{ p.endDate | date:'dd/MM/yy' }}
+                <span *ngIf="(getDaysRemaining(p.endDate) ?? 0) > 0 && p.status!=='COMPLETED'" class="kc-days">
+                  {{ getDaysRemaining(p.endDate) }}j
+                </span>
+                <span *ngIf="(getDaysRemaining(p.endDate) ?? 0) < 0 && p.status!=='COMPLETED'" class="kc-days overdue">
+                  +{{ -getDaysRemaining(p.endDate)! }}j
+                </span>
+              </div>
+
+              <div *ngIf="canWrite" class="kc-actions" (click)="$event.stopPropagation()">
+                <button (click)="openEdit(p)" title="Modifier"><i class="bi bi-pencil-fill"></i></button>
+                <button *ngIf="isAdmin" (click)="openDelete(p)" title="Supprimer"><i class="bi bi-trash3-fill"></i></button>
+              </div>
+            </div>
+
+            <!-- Zone de dépôt vide -->
+            <div
+              class="drop-zone"
+              [class.active]="dragOverStatus === s"
+              *ngIf="byStatus(s).length === 0 || dragOverStatus === s"
+            >
+              <i class="bi bi-arrow-down-circle"></i>
+              <span>{{ byStatus(s).length === 0 ? 'Aucun projet' : 'Déposer ici' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+  </main>
+</div>
