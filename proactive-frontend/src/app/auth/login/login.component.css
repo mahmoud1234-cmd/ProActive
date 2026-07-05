@@ -1,0 +1,44 @@
+.min-vh-100 {
+  min-height: 100vh;
+}
+
+.card {
+  border-radius: 15px;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #1a73e8, #0d47a1);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(26, 115, 232, 0.4);
+}
+
+.btn-primary:disabled {
+  transform: none;
+  box-shadow: none;
+}
+
+.form-control:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 0.2rem rgba(26, 115, 232, 0.25);
+}
+
+.form-control.is-invalid {
+  border-color: #dc3545;
+}
+
+.alert {
+  border-radius: 10px;
+}
+
+/* Logo */
+.app-logo {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(26,115,232,0.2));
+}

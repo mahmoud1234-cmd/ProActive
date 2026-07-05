@@ -1,0 +1,348 @@
+<div class="perm-page">
+
+  <!-- ══════════ SIDEBAR ══════════ -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">PA</div>
+      <div>
+        <span class="brand-name">ProActive</span>
+        <span class="brand-sub">Administration</span>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <span class="nav-label">Navigation</span>
+      <a routerLink="/dashboard" class="nav-link">
+        <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+      </a>
+      <a routerLink="/permissions" class="nav-link active">
+        <i class="bi bi-shield-lock-fill"></i><span>Permissions</span>
+        <span class="badge-admin">ADMIN</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-av">{{ userName.charAt(0) }}</div>
+        <div>
+          <strong>{{ userName }}</strong>
+          <span class="role-tag role-admin">ADMIN</span>
+        </div>
+      </div>
+      <button class="btn-logout" (click)="logout()">
+        <i class="bi bi-box-arrow-right"></i> Déconnexion
+      </button>
+    </div>
+  </aside>
+
+  <!-- ══════════ CONTENU ══════════ -->
+  <main class="perm-main">
+
+    <!-- Header -->
+    <header class="perm-header">
+      <div>
+        <h1><i class="bi bi-shield-lock-fill"></i> Gestion des permissions</h1>
+        <p>Gérez les comptes en attente, configurez les accès par rôle ou par utilisateur.</p>
+      </div>
+    </header>
+
+    <!-- Onglets -->
+    <div class="tabs">
+      <button class="tab" [class.active]="permTab==='pending'" (click)="setTab('pending')">
+        <i class="bi bi-hourglass-split"></i>
+        <div>
+          <span>En attente</span>
+          <small>Approbation des nouveaux comptes</small>
+        </div>
+        <span *ngIf="pendingCount > 0" class="tab-badge">{{ pendingCount }}</span>
+      </button>
+      <button class="tab" [class.active]="permTab==='role'" (click)="setTab('role')">
+        <i class="bi bi-people-fill"></i>
+        <div>
+          <span>Par rôle</span>
+          <small>Applique à tous les utilisateurs du rôle</small>
+        </div>
+      </button>
+      <button class="tab" [class.active]="permTab==='user'" (click)="setTab('user')">
+        <i class="bi bi-person-fill"></i>
+        <div>
+          <span>Par utilisateur</span>
+          <small>Override individuel</small>
+        </div>
+      </button>
+    </div>
+
+    <!-- ══ TAB EN ATTENTE ══ -->
+    <section *ngIf="permTab==='pending'" class="tab-pane">
+
+      <div *ngIf="pendingError"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ pendingError }}</div>
+      <div *ngIf="pendingSuccess" class="notif notif-ok"> <i class="bi bi-check-circle-fill"></i> {{ pendingSuccess }}</div>
+
+      <!-- Chargement -->
+      <div *ngIf="loadingPending" class="placeholder-center">
+        <div class="spinner-border text-primary"></div>
+        <p>Chargement des demandes...</p>
+      </div>
+
+      <!-- Aucune demande -->
+      <div *ngIf="!loadingPending && pendingUsers.length === 0" class="placeholder-center">
+        <i class="bi bi-check2-circle text-success"></i>
+        <h3>Aucune demande en attente</h3>
+        <p>Toutes les demandes d'inscription ont été traitées.</p>
+      </div>
+
+      <!-- Liste des comptes en attente -->
+      <div *ngIf="!loadingPending && pendingUsers.length > 0" class="pending-grid">
+        <div *ngFor="let user of pendingUsers" class="pending-card">
+          <div class="pending-card-header">
+            <div class="p-avatar-lg">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+            <div class="pending-user-info">
+              <h3>{{ user.firstName }} {{ user.lastName }}</h3>
+              <span class="pending-email">{{ user.email }}</span>
+              <div class="pending-meta">
+                <span class="role-tag" [ngClass]="getRoleClass(user.role)">
+                  <i class="bi" [ngClass]="getRoleIconForStr(user.role)"></i>
+                  {{ user.role }}
+                </span>
+                <span class="pending-date">
+                  <i class="bi bi-calendar3"></i>
+                  {{ user.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pending-card-info">
+            <div class="info-row">
+              <i class="bi bi-clock-history"></i>
+              <span>Demande soumise le {{ user.createdAt | date:'dd MMMM yyyy' }}</span>
+            </div>
+            <div class="info-row">
+              <i class="bi bi-shield-exclamation"></i>
+              <span>Rôle demandé : <strong>{{ user.role }}</strong></span>
+            </div>
+          </div>
+
+          <div class="pending-card-actions">
+            <button
+              class="btn-reject"
+              (click)="reject(user)"
+              [disabled]="processingId === user.id"
+            >
+              <span *ngIf="processingId === user.id" class="spinner-border spinner-border-sm"></span>
+              <i *ngIf="processingId !== user.id" class="bi bi-x-circle"></i>
+              Refuser
+            </button>
+            <button
+              class="btn-approve"
+              (click)="approve(user)"
+              [disabled]="processingId === user.id"
+            >
+              <span *ngIf="processingId === user.id" class="spinner-border spinner-border-sm"></span>
+              <i *ngIf="processingId !== user.id" class="bi bi-check-circle"></i>
+              Approuver
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB PAR RÔLE ══ -->
+    <section *ngIf="permTab==='role'" class="tab-pane">
+
+      <div *ngIf="roleError"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ roleError }}</div>
+      <div *ngIf="roleSuccess" class="notif notif-ok"> <i class="bi bi-check-circle-fill"></i> {{ roleSuccess }}</div>
+
+      <div class="split-layout">
+
+        <!-- Sélecteur de rôle -->
+        <aside class="role-picker">
+          <p class="picker-title">Choisir un rôle</p>
+          <button *ngFor="let r of managedRoles" class="role-btn"
+            [class.active]="selectedRole === r" (click)="selectRole(r)">
+            <i class="bi" [ngClass]="getRoleIcon(r)"></i>
+            <div>
+              <strong>{{ getRoleLabel(r) }}</strong>
+              <span>{{ r }}</span>
+            </div>
+            <span class="role-tag" [ngClass]="getRoleClass(r)">{{ r }}</span>
+          </button>
+
+          <div *ngIf="rolePermissions" class="affected-box">
+            <i class="bi bi-people"></i>
+            <span><strong>{{ rolePermissions.affectedUsers }}</strong> compte(s) affecté(s)</span>
+          </div>
+        </aside>
+
+        <!-- Panneau features -->
+        <div class="feat-panel">
+          <div *ngIf="loadingRole" class="placeholder">
+            <div class="spinner-border text-primary"></div>
+            <p>Chargement...</p>
+          </div>
+
+          <ng-container *ngIf="!loadingRole && rolePermissions">
+            <div class="panel-header">
+              <div class="panel-header-left">
+                <div class="role-icon-lg" [ngClass]="'bg-' + selectedRole.toLowerCase()">
+                  <i class="bi" [ngClass]="getRoleIcon(selectedRole)"></i>
+                </div>
+                <div>
+                  <h2>{{ getRoleLabel(selectedRole) }}
+                    <span class="role-tag" [ngClass]="getRoleClass(selectedRole)">{{ selectedRole }}</span>
+                  </h2>
+                  <p>{{ rolePermissions.affectedUsers }} utilisateur(s) affecté(s)</p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <button class="btn-cancel" (click)="resetRolePermissions()" [disabled]="savingRole || !hasRoleChanges()">
+                  <i class="bi bi-arrow-counterclockwise"></i> Annuler
+                </button>
+                <button class="btn-apply" (click)="saveRolePermissions()" [disabled]="savingRole || !hasRoleChanges()">
+                  <span *ngIf="savingRole" class="spinner-border spinner-border-sm"></span>
+                  <i *ngIf="!savingRole" class="bi bi-check-all"></i>
+                  {{ savingRole ? 'Application...' : 'Appliquer au rôle' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="features-grid">
+              <div *ngFor="let feature of allFeatures" class="feat-card" [ngClass]="getAccessClass(roleEditable[feature])">
+                <div class="feat-top">
+                  <div class="feat-icon"><i class="bi" [ngClass]="featureIcons[feature]"></i></div>
+                  <span class="feat-name">{{ featureLabels[feature] }}</span>
+                </div>
+                <div class="feat-levels">
+                  <button *ngFor="let level of allAccessLevels" class="lvl-btn"
+                    [class.active]="roleEditable[feature] === level"
+                    [ngClass]="'lbtn-' + level.toLowerCase()"
+                    (click)="roleEditable[feature] = level"
+                    [title]="accessLevelLabels[level]">
+                    <i class="bi" [ngClass]="getAccessIcon(level)"></i>
+                    <span>{{ accessLevelLabels[level] }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="legend-lbl">Légende :</span>
+              <span *ngFor="let level of allAccessLevels" class="legend-chip" [ngClass]="'lchip-' + level.toLowerCase()">
+                <i class="bi" [ngClass]="getAccessIcon(level)"></i> {{ accessLevelLabels[level] }}
+              </span>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ TAB PAR UTILISATEUR ══ -->
+    <section *ngIf="permTab==='user'" class="tab-pane">
+
+      <div *ngIf="userError"   class="notif notif-err"><i class="bi bi-x-circle-fill"></i> {{ userError }}</div>
+      <div *ngIf="userSuccess" class="notif notif-ok"> <i class="bi bi-check-circle-fill"></i> {{ userSuccess }}</div>
+
+      <div class="split-layout">
+
+        <!-- Liste utilisateurs -->
+        <aside class="user-list-panel">
+          <div class="user-list-header">
+            <span>Utilisateurs actifs</span>
+            <span class="count-chip">{{ users.length }}</span>
+          </div>
+
+          <div *ngIf="loadingUsers" class="loading-row">
+            <div class="spinner-border spinner-border-sm text-primary"></div> Chargement...
+          </div>
+
+          <ul *ngIf="!loadingUsers" class="user-list">
+            <li *ngFor="let user of users" class="user-item"
+              [class.selected]="selectedUser?.id === user.id"
+              (click)="selectUser(user)">
+              <div class="u-av">{{ user.firstName[0] }}{{ user.lastName[0] }}</div>
+              <div class="u-meta">
+                <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                <span>{{ user.email }}</span>
+              </div>
+              <span class="role-tag" [ngClass]="getRoleClass(user.role)">{{ user.role }}</span>
+            </li>
+            <li *ngIf="users.length === 0" class="empty-row">
+              <i class="bi bi-people"></i> Aucun utilisateur actif
+            </li>
+          </ul>
+        </aside>
+
+        <!-- Panneau droite -->
+        <div class="feat-panel">
+          <div *ngIf="!selectedUser" class="placeholder">
+            <i class="bi bi-arrow-left-circle"></i>
+            <h3>Sélectionnez un utilisateur</h3>
+            <p>Choisissez un utilisateur pour configurer ses permissions individuelles.</p>
+          </div>
+
+          <div *ngIf="selectedUser && loadingUser" class="placeholder">
+            <div class="spinner-border text-primary"></div>
+            <p>Chargement des permissions...</p>
+          </div>
+
+          <ng-container *ngIf="selectedUser && !loadingUser && userPermissions">
+            <div class="panel-header">
+              <div class="panel-header-left">
+                <div class="u-av-lg">{{ selectedUser.firstName[0] }}{{ selectedUser.lastName[0] }}</div>
+                <div>
+                  <h2>{{ selectedUser.firstName }} {{ selectedUser.lastName }}
+                    <span class="role-tag ml" [ngClass]="getRoleClass(selectedUser.role)">{{ selectedUser.role }}</span>
+                  </h2>
+                  <p>{{ selectedUser.email }}</p>
+                </div>
+              </div>
+              <div class="panel-actions">
+                <button class="btn-cancel" (click)="resetUserPermissions()" [disabled]="savingUser || !hasUserChanges()">
+                  <i class="bi bi-arrow-counterclockwise"></i> Annuler
+                </button>
+                <button class="btn-apply" (click)="saveUserPermissions()" [disabled]="savingUser || !hasUserChanges()">
+                  <span *ngIf="savingUser" class="spinner-border spinner-border-sm"></span>
+                  <i *ngIf="!savingUser" class="bi bi-check-lg"></i>
+                  {{ savingUser ? 'Enregistrement...' : 'Enregistrer' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="features-grid">
+              <div *ngFor="let feature of allFeatures" class="feat-card" [ngClass]="getAccessClass(userEditable[feature])">
+                <div class="feat-top">
+                  <div class="feat-icon"><i class="bi" [ngClass]="featureIcons[feature]"></i></div>
+                  <div class="feat-title">
+                    <span class="feat-name">{{ featureLabels[feature] }}</span>
+                    <span *ngIf="isCustom(feature)" class="tag-custom"><i class="bi bi-pencil-fill"></i> Personnalisé</span>
+                    <span *ngIf="!isCustom(feature)" class="tag-default"><i class="bi bi-shield-check"></i> Par défaut</span>
+                  </div>
+                </div>
+                <div class="feat-levels">
+                  <button *ngFor="let level of allAccessLevels" class="lvl-btn"
+                    [class.active]="userEditable[feature] === level"
+                    [ngClass]="'lbtn-' + level.toLowerCase()"
+                    (click)="userEditable[feature] = level"
+                    [title]="accessLevelLabels[level]">
+                    <i class="bi" [ngClass]="getAccessIcon(level)"></i>
+                    <span>{{ accessLevelLabels[level] }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="legend">
+              <span class="legend-lbl">Légende :</span>
+              <span *ngFor="let level of allAccessLevels" class="legend-chip" [ngClass]="'lchip-' + level.toLowerCase()">
+                <i class="bi" [ngClass]="getAccessIcon(level)"></i> {{ accessLevelLabels[level] }}
+              </span>
+            </div>
+          </ng-container>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>

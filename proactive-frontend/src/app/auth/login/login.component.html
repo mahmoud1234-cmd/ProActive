@@ -1,0 +1,98 @@
+<div class="container">
+  <div class="row justify-content-center min-vh-100 align-items-center">
+    <div class="col-md-6 col-lg-4">
+      <div class="card shadow-lg border-0">
+        <div class="card-body p-5">
+          <div class="text-center mb-4">
+            <img src="/logo.png" alt="ProActive" class="app-logo mb-2">
+            <p class="text-muted">Gestion de Projets • Suivi Prédictif</p>
+          </div>
+
+          <h5 class="text-center mb-4">Connexion</h5>
+
+          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
+            <div class="mb-3">
+              <label for="email" class="form-label fw-semibold">Email</label>
+              <input
+                type="email"
+                id="email"
+                class="form-control"
+                formControlName="email"
+                placeholder="admin@proactive.com"
+                [class.is-invalid]="email.invalid && email.touched"
+              />
+              <div
+                *ngIf="email.invalid && email.touched"
+                class="text-danger small"
+              >
+                <span *ngIf="email.errors?.['required']"
+                  >L'email est obligatoire</span
+                >
+                <span *ngIf="email.errors?.['email']"
+                  >Format d'email invalide</span
+                >
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label fw-semibold"
+                >Mot de passe</label
+              >
+              <input
+                type="password"
+                id="password"
+                class="form-control"
+                formControlName="password"
+                placeholder="••••••••"
+                [class.is-invalid]="password.invalid && password.touched"
+              />
+              <div
+                *ngIf="password.invalid && password.touched"
+                class="text-danger small"
+              >
+                <span *ngIf="password.errors?.['required']"
+                  >Le mot de passe est obligatoire</span
+                >
+                <span *ngIf="password.errors?.['minlength']"
+                  >Minimum 6 caractères</span
+                >
+              </div>
+            </div>
+
+            <div
+              *ngIf="errorMessage"
+              class="alert alert-danger d-flex align-items-center"
+              role="alert"
+            >
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              {{ errorMessage }}
+            </div>
+
+            <button
+              type="submit"
+              class="btn btn-primary w-100 py-2 fw-semibold"
+              [disabled]="loading || loginForm.invalid"
+            >
+              <span
+                *ngIf="loading"
+                class="spinner-border spinner-border-sm me-2"
+              ></span>
+              {{ loading ? "Connexion en cours..." : "Se connecter" }}
+            </button>
+          </form>
+
+          <hr class="my-4" />
+
+          <p class="text-center mb-0">
+            Pas encore de compte ?
+            <a
+              routerLink="/register"
+              class="text-primary fw-semibold text-decoration-none"
+              >S'inscrire</a
+            >
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
