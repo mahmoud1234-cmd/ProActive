@@ -19,8 +19,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findAllByCreatedByOrderByCreatedAtDesc(User createdBy);
 
-    @Query("SELECT p FROM Project p WHERE p.manager = :user OR p.createdBy = :user ORDER BY p.createdAt DESC")
-    List<Project> findAllByManagerOrCreatedByOrderByCreatedAtDesc(User user);
+    @Query("SELECT DISTINCT p FROM Project p LEFT JOIN p.members m WHERE p.manager = :user OR p.createdBy = :user OR m.user = :user ORDER BY p.createdAt DESC")
+    List<Project> findAllAccessibleByUser(User user);
 
     long countByStatus(Project.Status status);
 }

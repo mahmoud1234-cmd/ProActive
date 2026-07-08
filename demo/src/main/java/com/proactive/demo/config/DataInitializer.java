@@ -22,21 +22,20 @@ public class DataInitializer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) {
 
-        // ── ÉTAPE 1 : Migration colonne status ──────────────────────────────
+        // ── 1 : Colonne status sur user ───────────────────────────────────
+        migrateColumn("\"user\"", "status", "VARCHAR(20)");
         try {
-            jdbcTemplate.execute(
-                "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS status VARCHAR(20)"
-            );
-            int fixed = jdbcTemplate.update(
-                "UPDATE \"user\" SET status = 'APPROVED' WHERE status IS NULL"
-            );
-            if (fixed > 0) log.info("Migration : {} compte(s) → APPROVED", fixed);
+            jdbcTemplate.update("UPDATE \"user\" SET status = 'APPROVED' WHERE status IS NULL");
         } catch (Exception e) {
-            log.debug("Migration status : {}", e.getMessage());
+            log.debug("status update: {}", e.getMessage());
+        }
+        try {
+            jdbcTemplate.execute("ALTER TABLE \"user\" DROP CONSTRAINT IF EXISTS user_status_check");
+        } catch (Exception e) {
+            log.debug("drop user_status_check: {}", e.getMessage());
         }
 
-        // ── ÉTAPE 2 : Migration contrainte CHECK user_permissions.feature ───
-        // Supprimer l'ancienne contrainte qui ne contient pas APPROVALS et la recréer
+        // ── 2 : Contrainte feature permissions ───────────────────────────
         try {
             jdbcTemplate.execute(
                 "ALTER TABLE user_permissions DROP CONSTRAINT IF EXISTS user_permissions_feature_check"
@@ -45,52 +44,66 @@ public class DataInitializer implements ApplicationRunner {
                 "ALTER TABLE user_permissions ADD CONSTRAINT user_permissions_feature_check " +
                 "CHECK (feature IN ('DASHBOARD','PROJECTS','TASKS','REPORTS','USERS','APPROVALS','PERMISSIONS'))"
             );
-            log.info("Contrainte user_permissions_feature_check mise à jour avec APPROVALS.");
         } catch (Exception e) {
-            log.debug("Migration contrainte feature : {}", e.getMessage());
+            log.debug("feature constraint: {}", e.getMessage());
         }
 
-        // ── ÉTAPE 3 : Mettre à jour la contrainte CHECK user.status pour inclure BANNED ──
+        // ── 3 : Nouvelles colonnes table projects ────────────────────────
+        migrateColumn("projects", "type",        "VARCHAR(30) DEFAULT 'OTHER'");
+        migrateColumn("projects", "methodology", "VARCHAR(20) DEFAULT 'AGILE'");
+        migrateColumn("projects", "tools",       "TEXT");
+
+        // Mettre à jour les projets existants avec des valeurs par défaut
         try {
-            // Supprimer l'ancienne contrainte si elle existe
-            jdbcTemplate.execute("ALTER TABLE \"user\" DROP CONSTRAINT IF EXISTS user_status_check");
-            log.debug("Ancienne contrainte user_status_check supprimée");
+            jdbcTemplate.update("UPDATE projects SET type = 'OTHER' WHERE type IS NULL");
+            jdbcTemplate.update("UPDATE projects SET methodology = 'AGILE' WHERE methodology IS NULL");
         } catch (Exception e) {
-            log.debug("Pas de contrainte user_status_check à supprimer : {}", e.getMessage());
+            log.debug("projects defaults: {}", e.getMessage());
         }
 
-        // ── ÉTAPE 3 : Reset les comptes de test (mot de passe + status) ─────
-        resetOrCreate("admin@proactive.com",   "admin123",   "Admin",  "ProActive", User.Role.ADMIN);
-        resetOrCreate("manager@proactive.com", "manager123", "Marie",  "Martin",    User.Role.MANAGER);
-        resetOrCreate("user@proactive.com",    "user123",    "Jean",   "Dupont",    User.Role.USER);
+        // ── 4 : Comptes de test ──────────────────────────────────────────
+        resetOrCreate("admin@proactive.com",   "admin123",   "Admin", "ProActive", User.Role.ADMIN);
+        resetOrCreate("manager@proactive.com", "manager123", "Marie", "Martin",    User.Role.MANAGER);
+        resetOrCreate("user@proactive.com",    "user123",    "Jean",  "Dupont",    User.Role.USER);
 
-        log.info("Initialisation terminée. {} utilisateurs en base.", userRepository.count());
+        log.info("Initialisation OK. {} utilisateurs.", userRepository.count());
     }
 
-    /**
-     * Crée l'utilisateur s'il n'existe pas,
-     * ou remet son mot de passe et son statut à APPROVED s'il existe.
-     */
-    private void resetOrCreate(String email, String rawPassword, String fn, String ln, User.Role role) {
+    /** Ajoute une colonne si elle n'existe pas encore */
+    private void migrateColumn(String table, String column, String definition) {
+        try {
+            String checkSql = "SELECT COUNT(*) FROM information_schema.columns " +
+                              "WHERE table_name = ? AND column_name = ?";
+            // Pour les tables entre guillemets, on enlève les guillemets pour la comparaison
+            String tableName = table.replace("\"", "");
+            Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, tableName, column);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+                log.info("Colonne {}.{} ajoutée.", table, column);
+            }
+        } catch (Exception e) {
+            log.debug("migrateColumn {}.{}: {}", table, column, e.getMessage());
+        }
+    }
+
+    private void resetOrCreate(String email, String rawPwd, String fn, String ln, User.Role role) {
         userRepository.findByEmail(email).ifPresentOrElse(
             u -> {
-                // Réinitialiser le mot de passe et le statut
-                u.setPassword(passwordEncoder.encode(rawPassword));
+                u.setPassword(passwordEncoder.encode(rawPwd));
                 u.setStatus(User.Status.APPROVED);
                 u.setRole(role);
                 userRepository.save(u);
-                log.info("Compte {} → mot de passe réinitialisé, statut APPROVED", email);
             },
             () -> {
                 User u = new User();
                 u.setEmail(email);
-                u.setPassword(passwordEncoder.encode(rawPassword));
+                u.setPassword(passwordEncoder.encode(rawPwd));
                 u.setFirstName(fn);
                 u.setLastName(ln);
                 u.setRole(role);
                 u.setStatus(User.Status.APPROVED);
                 userRepository.save(u);
-                log.info("Compte {} créé (APPROVED)", email);
+                log.info("Compte {} créé.", email);
             }
         );
     }

@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "projects")
@@ -39,6 +41,20 @@ public class Project {
     @Column(nullable = false, length = 10)
     private Priority priority = Priority.MEDIUM;
 
+    /** Type de projet */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 30)
+    private ProjectType type = ProjectType.OTHER;
+
+    /** Méthodologie de travail */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private Methodology methodology = Methodology.AGILE;
+
+    /** Outils utilisés (liste séparée par virgules : "Jira,Slack,GitHub") */
+    @Column(columnDefinition = "TEXT")
+    private String tools;
+
     /** Budget estimé */
     private Double budget;
 
@@ -46,7 +62,7 @@ public class Project {
     @Column(name = "progress_pct")
     private Integer progressPct = 0;
 
-    /** Manager responsable du projet */
+    /** Manager principal du projet */
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "manager_id")
     private User manager;
@@ -55,6 +71,10 @@ public class Project {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "created_by")
     private User createdBy;
+
+    /** Membres du projet */
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    private List<ProjectMember> members = new ArrayList<>();
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -73,15 +93,36 @@ public class Project {
         updatedAt = LocalDateTime.now();
     }
 
+    // ── Enums ────────────────────────────────────────────────────
+
     public enum Status {
-        PLANNING,    // En planification
-        ACTIVE,      // En cours
-        ON_HOLD,     // En pause
-        COMPLETED,   // Terminé
-        CANCELLED    // Annulé
+        PLANNING, ACTIVE, ON_HOLD, COMPLETED, CANCELLED
     }
 
     public enum Priority {
         LOW, MEDIUM, HIGH, CRITICAL
+    }
+
+    public enum ProjectType {
+        SOFTWARE,       // Développement logiciel
+        INFRASTRUCTURE, // Infrastructure / DevOps
+        MARKETING,      // Campagne marketing
+        DESIGN,         // Design / UX
+        RESEARCH,       // Recherche & Innovation
+        TRAINING,       // Formation / Education
+        CONSULTING,     // Consulting
+        OTHER           // Autre
+    }
+
+    public enum Methodology {
+        AGILE,     // Agile / Scrum
+        KANBAN,    // Kanban
+        WATERFALL, // Cycle en V
+        LEAN,      // Lean
+        DEVOPS,    // DevOps
+        PRINCE2,   // PRINCE2
+        PMI,       // PMI / PMBOK
+        HYBRID,    // Hybride
+        OTHER      // Autre
     }
 }
